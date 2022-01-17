@@ -1,0 +1,10 @@
+# default environment
+env	= test
+
+# test environment
+test.db.file	= users-test.db
+test.db.passwd	= crypt:d4ZFcg7-gaK4BlhzcGhzFvwolEvv8UIFG1aXXIsiY0iexw
+test.net.host	= 127.0.0.1
+test.net.port	= 8080
+
+# vim: set ft=dosini noexpandtab sw=4 ts=4:

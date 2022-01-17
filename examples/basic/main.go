@@ -1,9 +1,7 @@
 package main
 
 import (
-	"flag"
 	"fmt"
-	"os"
 
 	"github.com/leftslash/config"
 )
@@ -13,16 +11,13 @@ import (
 
 func main() {
 
-	env := flag.String("env", "dev", "environment (e.g. dev, prod)")
-	flag.Parse()
+	conf := config.NewConfig()
+	conf.Flag("config", "configuration file")
+	conf.Flag("env", "environment (e.g. dev, prod)")
+	conf.Load()
 
-	conf, err := config.NewConfig()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-
-	fmt.Printf("%s\n", conf.Get(*env, "db.file"))
-	fmt.Printf("%s\n", conf.Get(*env, "db.passwd"))
-	fmt.Printf("%d\n", conf.GetInt(*env, "net.port"))
+	env := conf.Get("env")
+	fmt.Printf("%s\n", conf.Get(env, "db.file"))
+	fmt.Printf("%s\n", conf.Get(env, "db.passwd"))
+	fmt.Printf("%d\n", conf.GetInt(env, "net.port"))
 }

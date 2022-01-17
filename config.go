@@ -2,6 +2,7 @@ package config
 
 import (
 	"bufio"
+	"flag"
 	"os"
 	"regexp"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 )
 
 const (
+	defaultFile = ".config"
 	cryptPrefix = "crypt:"
 	cryptKeyEnv = "KEY"
 )
@@ -21,15 +23,31 @@ var (
 )
 
 type Config struct {
-	keyval map[string]string
+	isParsed bool
+	filename string
+	keyvalue map[string]string
+	flags    map[string]*string
 }
 
-func NewConfig() (c *Config, err error) {
-	c = &Config{keyval: map[string]string{}}
-	var file *os.File
-	file, err = os.Open(".config")
+func NewConfig() (c *Config) {
+	c = &Config{
+		isParsed: false,
+		filename: defaultFile,
+		keyvalue: map[string]string{},
+		flags:    map[string]*string{},
+	}
+	return
+}
+
+func (c *Config) Flag(name, desc string) {
+	c.flags[name] = flag.String(name, "", desc)
+}
+
+func (c *Config) Load() {
+	c.parse()
+	file, err := os.Open(c.filename)
 	if err != nil {
-		return
+		panic(err)
 	}
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -37,17 +55,27 @@ func NewConfig() (c *Config, err error) {
 		if comment.MatchString(line) {
 			continue
 		}
-		keyval := kvSplit.Split(line, 2)
-		if len(keyval) > 1 {
-			c.keyval[keyval[0]] = keyval[1]
+		keyvalue := kvSplit.Split(line, 2)
+		if len(keyvalue) > 1 {
+			c.keyvalue[keyvalue[0]] = keyvalue[1]
 		}
 	}
-	return
 }
 
 func (c *Config) Get(key ...string) (val string) {
-	val, _ = c.keyval[strings.Join(key, ".")]
+	c.parse()
+	fullkey := strings.Join(key, ".")
+	tmp, ok := c.flags[fullkey]
+	if ok && *tmp != "" {
+		val = *tmp
+	} else {
+		val, _ = c.keyvalue[fullkey]
+	}
 	if strings.HasPrefix(val, cryptPrefix) {
+		if len(val) <= len(cryptPrefix) {
+			val = ""
+			return
+		}
 		val, _ = xcrypto.Decrypt(os.Getenv(cryptKeyEnv), val[len(cryptPrefix):])
 	}
 	return
@@ -56,4 +84,14 @@ func (c *Config) Get(key ...string) (val string) {
 func (c *Config) GetInt(key ...string) (val int) {
 	val, _ = strconv.Atoi(c.Get(key...))
 	return
+}
+
+func (c *Config) parse() {
+	if !c.isParsed {
+		c.isParsed = true
+		flag.Parse()
+		if filename, ok := c.flags["config"]; ok && *filename != "" {
+			c.filename = *filename
+		}
+	}
 }
